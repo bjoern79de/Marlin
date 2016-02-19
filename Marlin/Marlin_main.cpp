@@ -2981,8 +2981,26 @@ inline void gcode_G28() {
           else
             act = ProbeStay;
 
-          measured_z = probe_pt(xProbe, yProbe, z_before, act, verbose_level);
+          byte num_measures = 0;
+          float prev_mean_z = 0.0;
+          float variance = 0.0;
 
+	  measured_z = 0.0;
+          do {
+            prev_mean_z = measured_z;
+            measured_z += probe_pt(xProbe, yProbe, z_before, act, verbose_level);
+            if (num_measures > 0) {
+              measured_z /= 2.0;
+              variance = abs(prev_mean_z - measured_z);
+              SERIAL_PROTOCOLPGM("z probe retry variance: ");
+              SERIAL_PROTOCOL_F(variance, 8);
+              SERIAL_EOL;
+            }
+            
+            num_measures++;
+            
+          } while (num_measures < 2 || (num_measures < 10 && variance > 0.01));
+     
           #if DISABLED(DELTA)
             mean += measured_z;
 
